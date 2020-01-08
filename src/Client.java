@@ -12,24 +12,26 @@ class Client {
     static ArrayList<String> sendQueue = new ArrayList<>();
     static ArrayList<String> receiveQueue = new ArrayList<>();
 
+    private static boolean closeConnection = false;
+
     public static void main(String args[])
             throws Exception
     {
 
         // Create client socket
-//        Socket s = new Socket("172.31.3.217", 1978);
-        Socket s = new Socket("localhost", 1978);
+//        Socket socket = new Socket("172.31.3.217", 1978);
+        Socket socket = new Socket("localhost", 1978);
 
         // to send data to the server
         DataOutputStream dos
                 = new DataOutputStream(
-                s.getOutputStream());
+                socket.getOutputStream());
 
         // to read data coming from the server
         BufferedReader br
                 = new BufferedReader(
                 new InputStreamReader(
-                        s.getInputStream()));
+                        socket.getInputStream()));
 
         // start scanners in separate thread to not stop program
         startScannerIn();
@@ -48,7 +50,7 @@ class Client {
             public void run() {
                 try {
                     mainloop:
-                    while (true) {
+                    while (!closeConnection) {
 
                         Thread.sleep(100);
 
@@ -70,12 +72,22 @@ class Client {
                         }
                     }
 
+                    System.out.print("Connection closed");
+
                     dos.close();
                     br.close();
-                    s.close();
+                    socket.close();
                 } catch (IOException | InterruptedException e) {
                     e.printStackTrace();
+                    try{
+                        dos.close();
+                        br.close();
+                        socket.close();
+                    } catch (IOException e2) {
+                        e2.printStackTrace();
+                    }
                 }
+                System.exit(0);
             }
         }).start();
     }
@@ -92,7 +104,10 @@ class Client {
 
                 try {
                     while (true) {
-                        receiveQueue.add(br.readLine());
+                        String string = br.readLine();
+                        if (string == null)
+                            closeConnection = true;
+                        receiveQueue.add(string);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

@@ -16,6 +16,7 @@ public class ServerInterface extends Thread {
 
     private ArrayList<String> sendQueue = new ArrayList<>();
     private ArrayList<String> receiveQueue = new ArrayList<>();
+    private boolean closeConnection = false;
 
     public ServerInterface(Socket clientSocket, String servername) {
         this.socket = clientSocket;
@@ -24,48 +25,48 @@ public class ServerInterface extends Thread {
 
     public void run() {
         InputStream inp = null;
-        BufferedReader brinp = null;
+        BufferedReader brinp;
         DataOutputStream out = null;
-
+        Thread receiveThread;
         try {
             inp = socket.getInputStream();
             brinp = new BufferedReader(new InputStreamReader(inp));
             out = new DataOutputStream(socket.getOutputStream());
             out.writeBytes(servername + "\n\r");
 
-            BufferedReader finalBrinp = brinp;
-            new Thread(new Runnable() {
+            receiveThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
 
 
                     try {
                         while (true) {
-                            receiveQueue.add(finalBrinp.readLine());
+                            receiveQueue.add(brinp.readLine());
                         }
                     } catch (IOException e) {
                         System.out.print(servername + " ");
                         e.printStackTrace();
                     }
                 }
-            }).start();
+            });
+            receiveThread.start();
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-
-                    Scanner scan = new Scanner(System.in);
-                    while (true) {
-                        sendQueue.add(scan.nextLine());
-                    }
-                }
-            }).start();
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                    Scanner scan = new Scanner(System.in);
+//                    while (true) {
+//                        sendQueue.add(scan.nextLine());
+//                    }
+//                }
+//            }).start();
         } catch (IOException e) {
             return;
         }
         String line;
         mainloop:
-        while (true) {
+        while (!this.closeConnection) {
             try {
                 sleep(100);
 //                line = brinp.readLine();
@@ -78,6 +79,8 @@ public class ServerInterface extends Thread {
 //                }
                 for (String eachString : new ArrayList<>(this.receiveQueue)) {
                     this.receiveQueue.remove(0);
+                    if (eachString == null)
+                        break mainloop;
                     handleMessage(eachString);
                 }
 
@@ -91,13 +94,26 @@ public class ServerInterface extends Thread {
                     out.writeBytes(eachString + "\n\r");
                     out.flush();
                     if (eachString.toLowerCase().equals("closeconn")) break mainloop;
+                    if (this.closeConnection) break mainloop;
                 }
             } catch (IOException e) {
+                closeConnection = true;
                 e.printStackTrace();
                 return;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+
+        System.out.println("Interrupting");
+
+        try {
+            out.close();
+            receiveThread.interrupt();
+            socket.close();
+            this.interrupt();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -109,11 +125,13 @@ public class ServerInterface extends Thread {
             if (accounts.contains(new AccountObject(splitted[0], splitted[1]))){
                 this.sendQueue.add("Authentication accepted");
             }else{
-                this.sendQueue.add("Authentication denied");
+                this.sendQueue.add("Authentication denied \n closing connection");
+                this.closeConnection = true;
             }
         }catch (IndexOutOfBoundsException e){
             e.printStackTrace();
-            this.sendQueue.add("Authentication denied");
+            this.sendQueue.add("Authentication denied \n closing connection");
+            this.closeConnection = true;
         }
     }
 }
