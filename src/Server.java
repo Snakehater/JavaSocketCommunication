@@ -8,15 +8,18 @@ import java.util.Scanner;
 
 class Server {
 
+    static ArrayList<AccountObject> accounts = new ArrayList<>();
+
     static ArrayList<String> sendQueue = new ArrayList<>();
     static ArrayList<String> receiveQueue = new ArrayList<>();
 
     public static void main(String args[])
             throws Exception
     {
+        addAccounts();
 
         // Create server Socket 
-        ServerSocket ss = new ServerSocket(888);
+        ServerSocket ss = new ServerSocket(1978);
 
         // connect it to client socket
         Socket s = ss.accept();
@@ -41,49 +44,69 @@ class Server {
 //                new InputStreamReader(System.in));
 
         // server executes continuously
-        while (true) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    // read from client
+                    mainloop: while (true) {
 
+                    Thread.sleep(100);
 
-            // repeat as long as the client
-            // does not send a null string
+                        for (String eachString : new ArrayList<>(receiveQueue)) {
+                            receiveQueue.remove(0);
+                            handleMessage(eachString);
+                        }
 
-            // read from client
-            mainloop: while (true) {
-
-                for (String eachString : new ArrayList<>(receiveQueue)) {
-                    receiveQueue.remove(0);
-                    handleMessage(eachString);
-                }
-
-                // go through list of send queue:
-                for (String eachString : new ArrayList<>(sendQueue)) {
-                    sendQueue.remove(0);
-                    println(eachString + " is now sent");
-                    // send to the server
-                    ps.println(eachString);
-                    if (eachString.toLowerCase().equals("closeconn")) break mainloop;
-                }
+                        // go through list of send queue:
+                        for (String eachString : new ArrayList<>(sendQueue)) {
+                            sendQueue.remove(0);
+//                            println(eachString + " is now sent");
+                            // send to the server
+                            ps.println(eachString);
+                            if (eachString.toLowerCase().equals("closeconn")) break mainloop;
+                        }
 
 //                str1 = kb.readLine();
-                // send to client
+                        // send to client
 //                ps.println(str1);
-            }
+                    }
 
-            // close connection
-            ps.close();
-            br.close();
+                    // close connection
+                    ps.close();
+                    br.close();
 //            kb.close();
-            ss.close();
-            s.close();
+                    ss.close();
+                    s.close();
 
-            // terminate application
-            System.exit(0);
+                    // terminate application
+                    System.exit(0);
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
 
-        } // end of while
+    private static void addAccounts() {
+        AccountObject object = new AccountObject("Vigor", "123");
+        accounts.add(object);
     }
 
     static void handleMessage(String message){
+        message = message.replace("\n", "");
         println(message);
+        String[] splitted = message.split(" ");
+        try{
+            if (accounts.contains(new AccountObject(splitted[0], splitted[1]))){
+                sendQueue.add("Authentication accepted");
+            }else{
+                sendQueue.add("Authentication denied");
+            }
+        }catch (IndexOutOfBoundsException e){
+            e.printStackTrace();
+            sendQueue.add("Authentication denied");
+        }
     }
 
     static void startScannerOut(BufferedReader br){
@@ -123,4 +146,26 @@ class Server {
     static void println(String s){
         System.out.println(s);
     }
-} 
+}
+
+class AccountObject {
+    String username = "";
+    String password = "";
+    AccountObject(String username, String password){
+        this.username = username;
+        this.password = password;
+    }
+    @Override
+    public boolean equals(Object v) {
+        boolean retVal = false;
+
+        if (v instanceof AccountObject) {
+            AccountObject ptr = (AccountObject) v;
+            retVal = ptr.username.equals(this.username) && ptr.password.equals(this.password);
+        }
+
+        System.out.println(retVal);
+
+        return retVal;
+    }
+}

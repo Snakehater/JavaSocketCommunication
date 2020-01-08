@@ -17,7 +17,8 @@ class Client {
     {
 
         // Create client socket
-        Socket s = new Socket("localhost", 888);
+//        Socket s = new Socket("172.31.3.217", 1978);
+        Socket s = new Socket("localhost", 1978);
 
         // to send data to the server
         DataOutputStream dos
@@ -54,7 +55,7 @@ class Client {
                         // go through list of send queue:
                         for (String eachString : new ArrayList<>(sendQueue)) {
                             sendQueue.remove(0);
-                            println(eachString + " is now sent");
+//                            println(eachString + " is now sent");
                             // send to the server
                             dos.writeBytes(eachString + "\n");
                             if (eachString.toLowerCase().equals("closeconn")) break mainloop;
