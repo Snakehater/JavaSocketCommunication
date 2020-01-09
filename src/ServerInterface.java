@@ -17,6 +17,7 @@ public class ServerInterface extends Thread {
     private ArrayList<String> sendQueue = new ArrayList<>();
     private ArrayList<String> receiveQueue = new ArrayList<>();
     private boolean closeConnection = false;
+    private String disconnectCommand = "#-disconnect-#";
 
     public ServerInterface(Socket clientSocket, String servername) {
         this.socket = clientSocket;
@@ -45,6 +46,7 @@ public class ServerInterface extends Thread {
                         }
                     } catch (IOException e) {
                         System.out.print(servername + " ");
+                        interrupt();
                         e.printStackTrace();
                     }
                 }
@@ -106,12 +108,23 @@ public class ServerInterface extends Thread {
         }
 
         System.out.println("Interrupting");
+        requestSocketDisconnect(out);
 
         try {
             out.close();
             receiveThread.interrupt();
             socket.close();
-            this.interrupt();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        this.interrupt();
+    }
+
+    private void requestSocketDisconnect(DataOutputStream out) {
+        System.out.println("requesting to disconnect");
+        try {
+            out.writeBytes(this.disconnectCommand + "\n\r");
+            out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -125,12 +138,12 @@ public class ServerInterface extends Thread {
             if (accounts.contains(new AccountObject(splitted[0], splitted[1]))){
                 this.sendQueue.add("Authentication accepted");
             }else{
-                this.sendQueue.add("Authentication denied \n closing connection");
+                this.sendQueue.add("Authentication denied \nclosing connection");
                 this.closeConnection = true;
             }
         }catch (IndexOutOfBoundsException e){
             e.printStackTrace();
-            this.sendQueue.add("Authentication denied \n closing connection");
+            this.sendQueue.add("Authentication denied \nclosing connection");
             this.closeConnection = true;
         }
     }

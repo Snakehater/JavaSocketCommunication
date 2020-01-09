@@ -13,6 +13,7 @@ class Client {
     static ArrayList<String> receiveQueue = new ArrayList<>();
 
     private static boolean closeConnection = false;
+    private static String disconnectCommand = "#-disconnect-#";
 
     public static void main(String args[])
             throws Exception
@@ -54,6 +55,24 @@ class Client {
 
                         Thread.sleep(100);
 
+                        for (String eachString : new ArrayList<>(receiveQueue)) {
+                            receiveQueue.remove(0);
+                            if (eachString != null) {
+                                handleMessage(eachString);
+                                if (eachString.toLowerCase().equals("closeconn")) break mainloop;
+                                if (eachString.toLowerCase().equals(disconnectCommand)){
+                                    System.out.println("Got disconnect command");
+                                    closeConnection = true;
+                                    break mainloop;
+                                }
+                            }
+                        }
+
+                        if (closeConnection){
+                            System.out.println("Detected socket closing");
+                            break mainloop;
+                        }
+
                         // go through list of send queue:
                         for (String eachString : new ArrayList<>(sendQueue)) {
                             sendQueue.remove(0);
@@ -61,14 +80,6 @@ class Client {
                             // send to the server
                             dos.writeBytes(eachString + "\n");
                             if (eachString.toLowerCase().equals("closeconn")) break mainloop;
-                        }
-
-                        for (String eachString : new ArrayList<>(receiveQueue)) {
-                            receiveQueue.remove(0);
-                            if (eachString != null) {
-                                handleMessage(eachString);
-                                if (eachString.toLowerCase().equals("closeconn")) break mainloop;
-                            }
                         }
                     }
 
@@ -105,8 +116,9 @@ class Client {
                 try {
                     while (true) {
                         String string = br.readLine();
-                        if (string == null)
+                        if (string == null) {
                             closeConnection = true;
+                        }
                         receiveQueue.add(string);
                     }
                 } catch (IOException e) {
