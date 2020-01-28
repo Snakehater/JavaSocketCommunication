@@ -4,7 +4,7 @@ import java.net.Socket;
 
 public class MultipleClientsServer {
 
-    static final int PORT = 1978;
+    static final int PORT = 6969;
 
     public static void main(String args[]) {
         ServerSocket serverSocket = null;
